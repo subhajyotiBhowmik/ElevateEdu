@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Classes</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: #fff;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+            color: #ffdd57;
+        }
+        h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            text-align: left;
+            font-weight: bold;
+            color: #fff;
+        }
+        .form-control {
+            margin-bottom: 20px;
+        }
+        button {
+            background: #ffdd57;
+            color: #1e3c72;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #ffcc33;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1, h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Classes</h1>
+
+        <!-- Form for scheduling a class -->
+        <h2>Schedule a Class</h2>
+        <form id="scheduleForm">
+            <div class="form-group">
+                <label for="platform">Platform:</label>
+                <select id="platform" name="platform" class="form-control" required>
+                    <option value="zoom">Zoom</option>
+                    <option value="google_meet">Google Meet</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="meetingId">Meeting ID:</label>
+                <input type="text" id="meetingId" name="meeting_id" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="dateTime">Date and Time:</label>
+                <input type="text" id="dateTime" name="date_time" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Schedule Class</button>
+        </form>
+    </div>
+
+    <!-- JavaScript to handle form submission and flatpickr -->
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Initialize flatpickr
+        flatpickr("#dateTime", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+        });
+
+        // Handle form submission
+        document.getElementById("scheduleForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            scheduleClass();
+        });
+
+        function scheduleClass() {
+            var form = document.getElementById("scheduleForm");
+            var formData = new FormData(form);
+            fetch("/schedule_class", {
+                method: "POST",
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                form.reset();
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("There was an error scheduling the class. Please try again.");
+            });
+        }
+    </script>
+</body>
+</html>

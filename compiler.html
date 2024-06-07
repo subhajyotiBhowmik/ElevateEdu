@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Compiler</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/matchbrackets.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+
+        .editor-container,
+        .output-container {
+            width: 45%;
+            margin: 10px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .editor-container:hover,
+        .output-container:hover {
+            transform: scale(1.05);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        select,
+        textarea,
+        input[type="submit"],
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .output-container {
+            overflow-y: auto;
+        }
+
+        .output-container pre {
+            white-space: pre-wrap;
+            font-size: 16px;
+            background: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            color: red;
+        }
+
+        .video-container {
+            margin-top: 20px;
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        iframe {
+            width: 100%;
+            max-width: 560px;
+            height: 315px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="editor-container animate__animated animate__fadeInLeft">
+            <h1>Code Editor</h1>
+            <form id="codeForm" action="/compiler" method="post">
+                <div class="form-group">
+                    <label for="languageSelect">Select Language:</label><br>
+                    <select id="languageSelect" name="language" class="form-control">
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="codeEditor">Enter Your Code:</label><br>
+                    <textarea id="codeEditor" name="code" rows="10" cols="50" class="form-control"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Compile</button>
+                </div>
+            </form>
+        </div>
+        <div class="output-container animate__animated animate__fadeInRight">
+            <h1>Output</h1>
+            <pre id="output"></pre>
+            <ul id="errorList"></ul>
+        </div>
+    </div>
+
+    <div class="container video-container animate__animated animate__fadeIn">
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+                lineNumbers: true,
+                mode: "python", // Default mode
+                indentUnit: 4, // Change this to adjust indentation size
+                autoCloseBrackets: true, // Auto close brackets
+                matchBrackets: true, // Match brackets
+                extraKeys: { "Ctrl-Space": "autocomplete" }
+            });
+
+            document.getElementById('languageSelect').addEventListener('change', function () {
+                var selectedLanguage = this.value;
+                if (selectedLanguage === 'python') {
+                    editor.setOption("mode", "python");
+                } else if (selectedLanguage === 'java') {
+                    editor.setOption("mode", "text/x-java");
+                } else if (selectedLanguage === 'c') {
+                    editor.setOption("mode", "text/x-csrc");
+                } else if (selectedLanguage === 'cpp') {
+                    editor.setOption("mode", "text/x-c++src");
+                }
+            });
+
+            document.querySelector('#codeForm').addEventListener('submit', function (e) {
+                e.preventDefault(); // Prevent form submission
+                var form = this;
+                var formData = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.output !== undefined) {
+                            var outputElement = document.getElementById('output');
+                            outputElement.innerText = data.output;
+                            if (data.execution_time !== undefined) {
+                                outputElement.innerText += "\n\nExecution Time: " + data.execution_time.toFixed(4) + " seconds";
+                            }
+                        } else {
+                            document.getElementById('output').innerText = 'No output received.';
+                        }
+
+                        if (data.error !== undefined) {
+                            var errorList = document.getElementById('errorList');
+                            errorList.innerHTML = '';
+                            var li = document.createElement('li');
+                            li.innerText = data.error;
+                            li.classList.add('error');
+                            errorList.appendChild(li);
+                            fetchVideos(formData.get('code'));
+                        } else {
+                            document.getElementById('errorList').innerHTML = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('output').innerText = 'An error occurred while compiling the code.';
+                    });
+            });
+
+            function fetchVideos(code) {
+                const query = "programming tutorial " + code;
+                const apiKey = "AIzaSyA95wDCTBxnMufuCbNS5e0sZyGbsdWjZC0"; // Replace with your YouTube API key
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&key=${apiKey}`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        const videoContainer = document.getElementById('videoContainer');
+                        videoContainer.innerHTML = '';
+                        const videos = data.items;
+                        videos.forEach(video => {
+                            const videoId = video.id.videoId;
+                            const iframe = document.createElement('iframe');
+                            iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                            iframe.width = '560';
+                            iframe.height = '315';
+                            iframe.frameBorder = '0';
+                            iframe.allowFullscreen = true;
+                            videoContainer.appendChild(iframe);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching videos:', error);
+                    });
+            }
+        });
+    </script>
+
+</body>
+
+</html>

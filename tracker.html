@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Tracker</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f9f9f9;
+            font-family: 'Roboto', sans-serif;
+        }
+        .container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4">Study Tracker</h1>
+        <form method="POST" action="{{ url_for('study_tracker') }}">
+            <div class="form-group">
+                <input type="number" class="form-control" name="hours" placeholder="Study Hours" required>
+            </div>
+            <div class="form-group">
+                <input type="number" class="form-control" name="sessions" placeholder="Study Sessions" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add to Tracker</button>
+        </form>
+        <hr>
+        <div>
+            <p>Total Study Hours: <strong>{{ tracker_data.total_hours }}</strong></p>
+            <p>Total Study Sessions: <strong>{{ tracker_data.sessions }}</strong></p>
+            <h3>Time Spent on Sections</h3>
+            <ul>
+                <li>Home: <strong>{{ tracker_data.time_spent.home }} seconds</strong></li>
+                <li>Notes: <strong>{{ tracker_data.time_spent.notes }} seconds</strong></li>
+                <li>Videos: <strong>{{ tracker_data.time_spent.videos }} seconds</strong></li>
+                <li>Study Tracker: <strong>{{ tracker_data.time_spent.tracker }} seconds</strong></li>
+                <li>Settings: <strong>{{ tracker_data.time_spent.settings }} seconds</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

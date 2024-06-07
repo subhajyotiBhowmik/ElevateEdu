@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Focus App</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f9f9f9; color: #333; }
+        .hero { background: url('https://source.unsplash.com/1600x900/?education') no-repeat center center/cover; height: 50vh; display: flex; align-items: center; justify-content: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,.5); }
+        .hero h1 { font-size: 3em; font-weight: 700; animation: fadeInDown 1s both; }
+        .nav-link { color: #fff!important; background-color: #007BFF; padding: 10px 20px; border-radius: 5px; transition: background-color .3s ease, transform .3s ease; font-weight: 500; }
+        .nav-link:hover { background-color: #0056b3; transform: scale(1.05); }
+        .video-card { transition: transform .3s ease-in-out, box-shadow .3s ease-in-out; }
+        .video-card:hover { transform: translateY(-10px); box-shadow: 0 8px 30px rgba(0,0,0,.15); }
+        .video-card .card-header { background-color: #007BFF; color: #fff; font-weight: 500; text-align: center; }
+        .video-section .card-body { padding: 0; }
+        @keyframes fadeInDown { 0% { opacity: 0; transform: translateY(-20px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>Welcome to Study Focus App</h1>
+    </div>
+    <div class="container">
+        <ul class="nav nav-pills justify-content-center my-4">
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='python tutorial') }}">Python Tutorial</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='javascript tutorial') }}">JavaScript Tutorial</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='Datastructure and algorithm') }}">DSA</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='Java') }}">JAVA</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='c++') }}">C++</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='machine learning') }}">Machine Learning</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='golang') }}">Go</a></li>
+            <li class="nav-item"><a class="nav-link mx-2" href="{{ url_for('videos', query='html') }}">HTML, CSS</a></li>
+        </ul>
+
+        <!-- Search Form -->
+        <form id="searchForm" class="form-inline justify-content-center my-4">
+            <input id="searchInput" class="form-control mr-2" type="search" placeholder="Search for tutorials..." aria-label="Search">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+    </div>
+    <div class="container">
+        <h2 class="text-center mb-4">Video Section</h2>
+        <div class="row video-section">
+            {% for video in videos %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card video-card">
+                    <div class="card-header">{{ video.title }}</div>
+                    <div class="card-body">
+                        <div class="embed-responsive embed-responsive-16by9">
+                            <iframe class="embed-responsive-item" src="{{ video.embed_url }}" allowfullscreen></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const studyTopics = ['python', 'javascript', 'datastructure', 'algorithm', 'java', 'c++', 'machine learning', 'golang', 'html', 'css'];
+
+            const isStudyRelated = studyTopics.some(topic => query.includes(topic));
+
+            if (isStudyRelated) {
+                window.location.href = `{{ url_for('videos', query='${query}') }}`;
+            } else {
+                alert('Focus on your studies!');
+            }
+        });
+    </script>
+</body>
+</html>

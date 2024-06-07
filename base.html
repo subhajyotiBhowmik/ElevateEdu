@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Your existing head content -->
+    <script>
+        let startTime;
+        let currentSection = window.location.pathname.split('/')[1] || 'home';
+
+        function startTracking() {
+            startTime = new Date();
+            alert(`Time count started on ${currentSection} section`);
+        }
+
+        function sendTimeSpent() {
+            let endTime = new Date();
+            let timeSpent = (endTime - startTime) / 1000; // time in seconds
+            fetch('/track_time', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    section: currentSection,
+                    time_spent: timeSpent
+                }),
+            });
+        }
+
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'hidden') {
+                sendTimeSpent();
+            } else if (document.visibilityState === 'visible') {
+                currentSection = window.location.pathname.split('/')[1] || 'home';
+                startTracking();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', startTracking);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+    </script>
+</head>
+<body>
+    <!-- Your existing body content -->
+</body>
+</html>
