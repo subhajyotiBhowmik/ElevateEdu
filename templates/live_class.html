@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Classes</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <!-- Zoom Web SDK CSS -->
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.10.1/css/bootstrap.css" />
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/2.10.1/css/react-select.css" />
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
+            color: #fff;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+            color: #ffdd57;
+        }
+        h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            text-align: left;
+            font-weight: bold;
+            color: #fff;
+        }
+        .form-control {
+            margin-bottom: 20px;
+        }
+        button {
+            background: #ffdd57;
+            color: #1e3c72;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #ffcc33;
+        }
+        .meeting {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .meeting h3 {
+            color: #ffdd57;
+        }
+        .meeting p {
+            margin: 5px 0;
+        }
+        .embed-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background-color: #000;
+        }
+        .embed-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1, h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Classes</h1>
+
+        <!-- Form for scheduling a class -->
+        <h2>Schedule a Class</h2>
+        <form id="scheduleForm">
+            <div class="form-group">
+                <label for="platform">Platform:</label>
+                <select id="platform" name="platform" class="form-control" required aria-label="Platform selection">
+                    <option value="zoom">Zoom</option>
+                    <option value="google_meet">Google Meet</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="meetingTitle">Meeting Title:</label>
+                <input type="text" id="meetingTitle" name="meeting_title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="dateTime">Date and Time:</label>
+                <input type="text" id="dateTime" name="date_time" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Schedule Class</button>
+        </form>
+
+        <!-- Container for displaying scheduled meetings -->
+        <h2>Upcoming Classes</h2>
+        <div id="meetingsContainer"></div>
+    </div>
+
+    <!-- JavaScript to handle form submission and scheduling -->
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Zoom Web SDK -->
+    <script src="https://source.zoom.us/2.10.1/lib/vendor/react.min.js"></script>
+    <script src="https://source.zoom.us/2.10.1/lib/vendor/react-dom.min.js"></script>
+    <script src="https://source.zoom.us/zoom-meeting-2.10.1.min.js"></script>
+    <script>
+        // Initialize flatpickr
+        flatpickr("#dateTime", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+        });
+
+        // Handle form submission
+        document.getElementById("scheduleForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            scheduleClass();
+        });
+
+        function scheduleClass() {
+            const platform = document.getElementById('platform').value;
+            const meetingTitle = document.getElementById('meetingTitle').value;
+            const dateTime = document.getElementById('dateTime').value;
+
+            if (platform === 'zoom') {
+                scheduleZoomClass(meetingTitle, dateTime);
+            } else if (platform === 'google_meet') {
+                scheduleGoogleMeetClass(meetingTitle, dateTime);
+            }
+        }
+
+        function scheduleZoomClass(title, dateTime) {
+            const zoomToken = 'w07HgH3MTSeqFJh3KgLB1g'; // Replace with your Zoom JWT token
+            const zoomUserId = 'FtzWAFweQe2bRAHa9uW4Vw'; // Replace with your Zoom user ID or email
+
+            fetch(`https://meet.google.com/xbd-jdfc-fcj?authuser=3&pli=1   `, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${zoomToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    topic: title,
+                    type: 2, // Scheduled meeting
+                    start_time: new Date(dateTime).toISOString(), // Convert to ISO string
+                    duration: 60, // 1 hour
+                    timezone: 'UTC',
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Zoom meeting scheduled successfully!');
+                displayMeeting('zoom', data);
+            })
+            .catch(error => {
+                console.error('Error scheduling Zoom meeting:', error);
+                alert('Error scheduling Zoom meeting');
+            });
+        }
+
+        function scheduleGoogleMeetClass(title, dateTime) {
+            const googleToken = 'YOUR_GOOGLE_CALENDAR_API_KEY'; // Replace with actual OAuth token
+            const calendarId = 'primary';
+
+            fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?conferenceDataVersion=1`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${googleToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    summary: title,
+                    start: {
+                        dateTime: new Date(dateTime).toISOString(),
+                        timeZone: 'UTC'
+                    },
+                    end: {
+                        dateTime: new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString(), // 1 hour later
+                        timeZone: 'UTC'
+                    },
+                    conferenceData: {
+                        createRequest: {
+                            requestId: Math.random().toString(36).substr(2, 10),
+                            conferenceSolutionKey: {
+                                type: 'hangoutsMeet'
+                            }
+                        }
+                    }
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Google Meet scheduled successfully!');
+                displayMeeting('google_meet', data);
+            })
+            .catch(error => {
+                console.error('Error scheduling Google Meet:', error);
+                alert('Error scheduling Google Meet');
+            });
+        }
+
+        function displayMeeting(platform, data) {
+            let meetingLink = '';
+            let title = '';
+            let startTime = '';
+
+            if (platform === 'zoom') {
+                meetingLink = data.join_url;
+                title = data.topic;
+                startTime = data.start_time;
+            } else if (platform === 'google_meet') {
+                meetingLink = data.hangoutLink;
+                title = data.summary;
+                startTime = data.start.dateTime;
+            }
+
+            const meetingsContainer = document.getElementById('meetingsContainer');
+            const meetingDiv = document.createElement('div');
+            meetingDiv.className = 'meeting';
+            meetingDiv.innerHTML = `
+                <h3>${title}</h3>
+                <p>Start Time: ${new Date(startTime).toLocaleString()}</p>
+                <div class="embed-container">
+                    ${platform === 'zoom' ? `<div id="zoom-meeting-${data.id}"></div>` : `<a href="${meetingLink}" target="_blank" class="btn btn-primary">Join Google Meet</a>`}
+                </div>
+            `;
+
+            meetingsContainer.appendChild(meetingDiv);
+
+            if (platform === 'zoom') {
+                startZoomMeeting(data.id, data.join_url);
+            }
+        }
+
+        function startZoomMeeting(meetingId, meetingLink) {
+            ZoomMtg.preLoadWasm();
+            ZoomMtg.prepareJssdk();
+
+            ZoomMtg.init({
+                leaveUrl: window.location.href,
+                success: function () {
+                    ZoomMtg.join({
+                        meetingNumber: meetingId,
+                        userName: 'User',
+                        signature: generateSignature(meetingId),
+                        apiKey: 'YOUR_ZOOM_API_KEY',
+                        passWord: '',
+                        success: function (res) {
+                            console.log('Join meeting success');
+                        },
+                        error: function (res) {
+                            console.error(res);
+                        }
+                    });
+                },
+                error: function (res) {
+                    console.error(res);
+                }
+            });
+        }
+
+        function generateSignature(meetingNumber) {
+            const apiKey = 'FtzWAFweQe2bRAHa9uW4Vw';
+            const apiSecret = 'w8tVjG2fPum5zW443IjFW2lMfYoz8C8N';
+            const role = 0;
+
+            // Using crypto-js library to generate signature
+            const signature = ZoomMtg.generateSignature({
+                meetingNumber: meetingNumber,
+                apiKey: apiKey,
+                apiSecret: apiSecret,
+                role: role,
+                success: function (res) {
+                    return res.result;
+                }
+            });
+
+            return signature;
+        }
+
+        // Sample fetch and display function for testing without actual API calls
+        function fetchAndDisplayMeetings() {
+            // Example data
+            const meetings = [
+                { platform: 'zoom', topic: 'Zoom Meeting', start_time: '2023-07-01T12:00:00Z', join_url: 'https://us05web.zoom.us/j/88099509054?pwd=IsSkuAa0MbehtieSqKbjPpy8mqc0l4.1' },
+                { platform: 'google_meet', summary: 'Google Meet', start: { dateTime: '2023-07-01T14:00:00Z' }, hangoutLink: 'https://meet.google.com/abc-defg-hij' }
+            ];
+
+            meetings.forEach(meeting => displayMeeting(meeting.platform, meeting));
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchAndDisplayMeetings);
+    </script>
+</body>
+</html>
