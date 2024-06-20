@@ -58,27 +58,6 @@ def save_users(users_data):
         json.dump(users_data, file, indent=4)
 
 
-
-# Route to render the HTML page
-@app.route('/')
-def index():
-    return render_template('home.html', notes=notes)
-
-# Route to handle adding a new note
-
-
-# Route to delete a note
-@app.route('/delete_note/<int:id>', methods=['DELETE'])
-def delete_note(id):
-    global notes
-    notes = [note for note in notes if note['id'] != id]
-    return jsonify({'success': True})
-
-# Route to perform NER
-
-
-# Function to extract entities using spaCy NER
-
 @app.route('/upload_profile_picture', methods=['POST'])
 def upload_profile_picture():
     if 'username' not in session:
