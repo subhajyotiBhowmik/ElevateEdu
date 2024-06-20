@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profile-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .profile-picture {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .profile-info {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="profile-header">
+        <h1>User Profile</h1>
+        <img src="https://via.placeholder.com/150" alt="Profile Picture" class="profile-picture" id="profilePicture">
+        <br>
+        <button class="btn btn-primary mt-2" onclick="changeProfilePicture()">Change Profile Picture</button>
+        <input type="file" id="profilePictureInput" style="display: none;" accept="image/*" onchange="uploadProfilePicture()">
+    </div>
+
+    <div class="profile-info">
+        <form id="profileForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" value="user1">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" class="form-control" id="email" name="email" value="user1@example.com">
+            </div>
+            <div class="form-group">
+                <label for="bio">Bio</label>
+                <textarea class="form-control" id="bio" name="bio" rows="3">This is a sample bio.</textarea>
+            </div>
+            <button type="button" class="btn btn-success" onclick="updateProfile()">Update Profile</button>
+        </form>
+    </div>
+
+    <div class="recent-activities mt-5">
+        <h2>Recent Activities</h2>
+        <ul class="list-group" id="recentActivities">
+            <!-- Activities will be dynamically added here -->
+        </ul>
+    </div>
+</div>
+
+<!-- Bootstrap and jQuery JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+<script>
+    function changeProfilePicture() {
+        $('#profilePictureInput').click();
+    }
+
+    function uploadProfilePicture() {
+        var formData = new FormData();
+        formData.append('profile_picture', $('#profilePictureInput')[0].files[0]);
+
+        $.ajax({
+            url: '/upload_profile_picture',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#profilePicture').attr('src', response.new_picture_url);
+                    alert('Profile picture updated successfully.');
+                } else {
+                    alert('Failed to update profile picture.');
+                }
+            },
+            error: function() {
+                alert('Error uploading profile picture.');
+            }
+        });
+    }
+
+    function updateProfile() {
+        var formData = $('#profileForm').serialize();
+
+        $.ajax({
+            url: '/update_profile',
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert('Profile updated successfully.');
+                } else {
+                    alert('Failed to update profile.');
+                }
+            },
+            error: function() {
+                alert('Error updating profile.');
+            }
+        });
+    }
+
+    function loadRecentActivities() {
+        $.ajax({
+            url: '/recent_activities',
+            type: 'GET',
+            success: function(response) {
+                if (response.status === 'success') {
+                    var activities = response.activities;
+                    var activityList = '';
+                    activities.forEach(function(activity) {
+                        activityList += '<li class="list-group-item">' + activity + '</li>';
+                    });
+                    $('#recentActivities').html(activityList);
+                } else {
+                    $('#recentActivities').html('<li class="list-group-item">No recent activities found.</li>');
+                }
+            },
+            error: function() {
+                $('#recentActivities').html('<li class="list-group-item">Error loading recent activities.</li>');
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        loadRecentActivities();
+    });
+</script>
+</body>
+</html>
