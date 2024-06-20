@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
+    <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Custom CSS -->
     <style>
         body {
             font-family: 'Roboto', sans-serif;
@@ -51,8 +53,7 @@
             justify-content: center;
             color: white;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-        .hero-section .container {
+            padding: 0 15px;
             text-align: center;
         }
         .hero-section h1 {
@@ -62,6 +63,7 @@
         }
         .hero-section p {
             font-size: 1.2em;
+            margin-top: 1rem;
         }
         .hero-section .btn {
             background-color: #0056b3;
@@ -69,6 +71,7 @@
             padding: 10px 20px;
             border-radius: 5px;
             transition: background-color 0.3s ease, transform 0.3s ease;
+            margin-top: 1.5rem;
         }
         .hero-section .btn:hover {
             background-color: #004080;
@@ -82,6 +85,57 @@
             100% {
                 opacity: 1;
                 transform: translateY(0);
+            }
+        }
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .hero-section {
+                height: 50vh;
+            }
+            .hero-section h1 {
+                font-size: 2.5em;
+            }
+            .hero-section p {
+                font-size: 1.1em;
+            }
+        }
+        @media (max-width: 768px) {
+            .hero-section {
+                height: 40vh;
+            }
+            .hero-section h1 {
+                font-size: 2em;
+            }
+            .hero-section p {
+                font-size: 1em;
+            }
+            .navbar .nav-link {
+                padding: 10px;
+            }
+            .navbar .nav-item {
+                margin: 5px 0;
+            }
+        }
+        @media (max-width: 576px) {
+            .hero-section {
+                height: 30vh;
+                padding: 0 10px;
+            }
+            .hero-section h1 {
+                font-size: 1.5em;
+            }
+            .hero-section p {
+                font-size: 0.9em;
+            }
+            .hero-section .btn {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            .navbar .nav-link {
+                padding: 5px;
+            }
+            .navbar .nav-item {
+                margin: 3px 0;
             }
         }
     </style>
@@ -99,20 +153,24 @@
                 <ul class="navbar-nav ml-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="/">Home</a>
-                    </li>
+                                            </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/notes">Notes</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/videos">Videos</a>
                     </li>
-
                     <li class="nav-item">
                         <a class="nav-link" href="/compiler">Coding Zone</a>
                     </li>
-                     <li class="nav-item">
+                    <li class="nav-item">
                         <a class="nav-link" href="/live_class">Live Class</a>
                     </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('fun_zone') }}">Fun Zone</a>
+                    </li>
+
+
                     <li class="nav-item">
                         <a class="nav-link" href="/tracker">Study Tracker</a>
                     </li>
@@ -148,9 +206,40 @@
         </div>
     </div>
 
+    <!-- Bootstrap JS and dependencies -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Custom JS -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <script>
+        // Function to track time spent on a section
+        function trackSectionTime(section) {
+            // Send an AJAX request to the server to record time spent on the section
+            $.ajax({
+                url: '/track_time',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ section: section, time_spent: 1 }), // Assuming 1 second spent
+                success: function(response) {
+                    console.log('Time recorded for section:', section);
+                },
+                error: function(error) {
+                    console.error('Error recording time for section:', section, error);
+                }
+            });
+        }
+
+        // Add event listeners to navbar links to track time spent on sections
+        $(document).ready(function() {
+            $('.navbar-nav .nav-link').click(function() {
+                var section = $(this).text().trim(); // Get the text of the clicked link
+                trackSectionTime(section); // Track time spent on the clicked section
+            });
+        });
+    </script>
 </body>
 </html>
+
+
