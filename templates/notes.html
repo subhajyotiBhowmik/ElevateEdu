@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notes</title>
+    <title>Notes with AI Features</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -19,33 +19,227 @@
             border-radius: 5px;
             padding: 10px;
             margin-bottom: 10px;
+            position: relative;
+        }
+        .note-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .note-actions button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #007bff;
+        }
+        .color-picker {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 10px;
+        }
+        .color-picker span {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .note-form {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .note-form input,
+        .note-form textarea {
+            margin-bottom: 10px;
+        }
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .tags-input input {
+            border: none;
+            outline: none;
+            flex: 1;
+        }
+        .tag {
+            background-color: #007bff;
+            color: #fff;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .tag span {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .summary {
+            font-style: italic;
+            color: #666;
+        }
+        .sentiment {
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="my-4">Notes Section</h1>
-        <form method="POST" action="{{ url_for('notes_route') }}">
+        <h1 class="my-4">Notes Section with AI Features</h1>
+
+        <!-- Note Form -->
+        <form method="POST" action="{{ url_for('notes_route') }}" class="note-form" id="note-form">
             <div class="form-group">
                 <input type="text" class="form-control" name="title" placeholder="Title" required>
             </div>
             <div class="form-group">
-                <textarea class="form-control" name="content" placeholder="Content" required></textarea>
+                <textarea class="form-control" name="content" id="note-content" placeholder="Content" required></textarea>
+            </div>
+            <div class="form-group">
+                <div class="color-picker">
+                    <span style="background-color: #ffeb3b;" data-color="#ffeb3b"></span>
+                    <span style="background-color: #4caf50;" data-color="#4caf50"></span>
+                    <span style="background-color: #f44336;" data-color="#f44336"></span>
+                    <span style="background-color: #2196f3;" data-color="#2196f3"></span>
+                    <span style="background-color: #9c27b0;" data-color="#9c27b0"></span>
+                </div>
+                <input type="hidden" name="color" id="note-color" value="#fff">
+            </div>
+            <div class="form-group">
+                <div class="tags-input" data-name="tags">
+                    <input type="text" placeholder="Add tags">
+                </div>
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" id="generate-summary">Generate Summary</button>
+                <button type="button" class="btn btn-info" id="analyze-sentiment">Analyze Sentiment</button>
+            </div>
+            <div class="form-group">
+                <p class="summary" id="note-summary"></p>
+                <p class="sentiment" id="note-sentiment"></p>
             </div>
             <button type="submit" class="btn btn-primary">Add Note</button>
         </form>
+
+        <!-- Search Bar -->
+        <div class="form-group">
+            <input type="text" id="search" class="form-control" placeholder="Search Notes">
+        </div>
+
         <hr>
-        <ul class="list-unstyled">
+
+        <!-- Notes List -->
+        <ul class="list-unstyled" id="notes-list">
             {% for note in notes %}
-                <li class="note-item">
-                    <strong>{{ note.title }}</strong>: {{ note.content }}
+                <li class="note-item" style="background-color: {{ note.color }};">
+                    <div class="note-content">
+                        <strong>{{ note.title }}</strong>
+                        <p>{{ note.content }}</p>
+                        <div class="tags">
+                            {% for tag in note.tags %}
+                                <span class="tag">{{ tag }}<span>&times;</span></span>
+                            {% endfor %}
+                        </div>
+                        <p class="summary">{{ note.summary }}</p>
+                        <p class="sentiment">{{ note.sentiment }}</p>
+                    </div>
+                    <div class="note-actions">
+                        <button onclick="editNote('{{ note.id }}')">Edit</button>
+                        <button onclick="deleteNote('{{ note.id }}')">Delete</button>
+                    </div>
                 </li>
             {% endfor %}
         </ul>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Handle color picker
+            $('.color-picker span').click(function() {
+                const color = $(this).data('color');
+                $('#note-color').val(color);
+                $(this).siblings().removeClass('selected');
+                $(this).addClass('selected');
+            });
+
+            // Handle tags input
+            $('.tags-input input').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const tag = $(this).val().trim();
+                    if (tag) {
+                        const tagHtml = `<span class="tag">${tag}<span>&times;</span></span>`;
+                        $(this).before(tagHtml);
+                        $(this).val('');
+                    }
+                }
+            });
+
+            // Remove tag
+            $(document).on('click', '.tag span', function() {
+                $(this).parent().remove();
+            });
+
+            // Search functionality
+            $('#search').on('keyup', function() {
+                const query = $(this).val().toLowerCase();
+                $('#notes-list .note-item').each(function() {
+                    const title = $(this).find('strong').text().toLowerCase();
+                    const content = $(this).find('p').text().toLowerCase();
+                    $(this).toggle(title.includes(query) || content.includes(query));
+                });
+            });
+
+            // Generate summary
+            $('#generate-summary').click(function() {
+                const content = $('#note-content').val();
+                $.ajax({
+                    url: `/generate_summary`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ content: content }),
+                    success: function(response) {
+                        $('#note-summary').text(response.summary);
+                    }
+                });
+            });
+
+            // Analyze sentiment
+            $('#analyze-sentiment').click(function() {
+                const content = $('#note-content').val();
+                $.ajax({
+                    url: `/analyze_sentiment`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ content: content }),
+                    success: function(response) {
+                        $('#note-sentiment').text(`Sentiment: ${response.sentiment}`);
+                    }
+                });
+            });
+        });
+
+        function editNote(id) {
+            // Fetch note data and populate the form for editing
+            // Implement AJAX call to get note data and populate the form
+        }
+
+        function deleteNote(id) {
+            // Implement AJAX call to delete the note
+            $.ajax({
+                url: `/delete_note/${id}`,
+                method: 'DELETE',
+                success: function() {
+                    $(`#note-${id}`).remove();
+                }
+            });
+        }
+    </script>
 </body>
 </html>
