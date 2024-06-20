@@ -14,6 +14,20 @@ import cv2
 import numpy as np
 import time
 import threading
+import requests
+import logging
+import cv2
+import spacy
+import numpy as np
+
+
+
+
+
+
+
+
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -23,6 +37,139 @@ app.config['MAIL_USERNAME'] = 'subhajyoti010102@gmail.com'  # Enter your Gmail a
 app.config['MAIL_PASSWORD'] = 'vkps mwjm dnat voyd'   # Enter your Gmail password
 app.config['MAIL_DEFAULT_SENDER'] = 'subhajyoti010102@gmail.com'  # Enter your Gmail address
 
+UPLOAD_FOLDER = 'uploads/'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def load_users():
+    if os.path.exists('users.json'):
+        with open('users.json', 'r') as file:
+            return json.load(file)
+    return {}
+
+def save_users(users_data):
+    with open('users.json', 'w') as file:
+        json.dump(users_data, file, indent=4)
+
+notes = []
+
+# Load spaCy English model for NER
+nlp = spacy.load('en_core_web_sm')
+
+# Route to render the HTML page
+@app.route('/')
+def index():
+    return render_template('home.html', notes=notes)
+
+# Route to handle adding a new note
+@app.route('/add_note', methods=['POST'])
+def add_note():
+    title = request.form['title']
+    content = request.form['content']
+    color = request.form['color']
+    tags = request.form.getlist('tags[]')
+
+    # Perform NER on content
+    entities = perform_ner(content)
+
+    note = {
+        'id': len(notes) + 1,
+        'title': title,
+        'content': content,
+        'color': color,
+        'tags': tags,
+        'entities': entities
+    }
+    notes.append(note)
+    return jsonify({'success': True})
+
+# Route to delete a note
+@app.route('/delete_note/<int:id>', methods=['DELETE'])
+def delete_note(id):
+    global notes
+    notes = [note for note in notes if note['id'] != id]
+    return jsonify({'success': True})
+
+# Route to perform NER
+@app.route('/perform_ner', methods=['POST'])
+def perform_ner():
+    data = request.get_json()
+    content = data['content']
+    entities = extract_entities(content)
+    return jsonify({'entities': entities})
+
+# Function to extract entities using spaCy NER
+def extract_entities(text):
+    doc = nlp(text)
+    entities = [ent.text for ent in doc.ents]
+    return entities
+@app.route('/upload_profile_picture', methods=['POST'])
+def upload_profile_picture():
+    if 'username' not in session:
+        return jsonify({'status': 'error', 'message': 'User not logged in'})
+
+    if 'profile_picture' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file uploaded'})
+
+    file = request.files['profile_picture']
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        users_data = load_users()
+        users_data[session['username']]['profile_picture'] = filename
+        save_users(users_data)
+        return jsonify({'status': 'success', 'new_picture_url': url_for('uploaded_file', filename=filename)})
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid file format'})
+
+
+def send_from_directory(param, filename):
+    pass
+
+
+@app.route('/uploaded_file/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'username' not in session:
+        return jsonify({'status': 'error', 'message': 'User not logged in'})
+
+    username = request.form['username']
+    email = request.form['email']
+    bio = request.form['bio']
+
+    users_data = load_users()
+    users_data[session['username']].update({'username': username, 'email': email, 'bio': bio})
+    save_users(users_data)
+
+    return jsonify({'status': 'success'})
+
+@app.route('/recent_activities', methods=['GET'])
+def recent_activities():
+    if 'username' not in session:
+        return jsonify({'status': 'error', 'message': 'User not logged in'})
+
+    # Example activities, replace with actual data fetching from the database
+    activities = ['Logged in', 'Updated profile', 'Watched a video']
+    return jsonify({'status': 'success', 'activities': activities})
+
+@app.route('/profile')
+def profile():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    users_data = load_users()
+    user = users_data.get(session['username'])
+    return render_template('profile.html', user=user)
+
 mail = Mail(app)
 
 user_data = {
@@ -31,10 +178,10 @@ user_data = {
     }
 }
 
-API_KEY = 'AIzaSyA95wDCTBxnMufuCbNS5e0sZyGbsdWjZC0'
-youtube = build('youtube', 'v3', developerKey=API_KEY)
+YOUTUBE_API_KEY = 'AIzaSyA95wDCTBxnMufuCbNS5e0sZyGbsdWjZC0'
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+app.secret_key = b"27287817818jnjau7yqw821u12u"
 
-# In-memory store for notes and study tracker data
 tracker_data = {
     'total_hours': 0,
     'sessions': 0,
@@ -47,8 +194,31 @@ tracker_data = {
     }
 }
 
-# Secret key for session management
-app.secret_key = b"27287817818jnjau7yqw821u12u"
+@app.route('/tracker', methods=['GET', 'POST'])
+
+def study_tracker_view():
+    if request.method == 'POST':
+        hours = int(request.json['hours'])
+        sessions = int(request.json['sessions'])
+        tracker_data['total_hours'] += hours
+        tracker_data['sessions'] += sessions
+        return jsonify({'status': 'success'})
+    return render_template('tracker.html')
+
+@app.route('/tracker/data')
+
+def tracker_data_view():
+    return jsonify(tracker_data)
+
+@app.route('/track_time', methods=['POST'])
+
+def track_time_view():
+    data = request.json
+    section = data.get('section')
+    time_spent = data.get('time_spent', 0)
+    if section in tracker_data['time_spent']:
+        tracker_data['time_spent'][section] += time_spent
+    return jsonify({'status': 'success'})
 
 # Function to hash password with SHA-256
 def hash_password(password):
@@ -99,18 +269,7 @@ def notes_route():
     user_notes = load_users().get(session['username'], {}).get('notes', [])
     return render_template('notes.html', notes=user_notes)
 
-@app.route('/tracker', methods=['GET', 'POST'])
-def study_tracker():
-    if 'username' not in session:
-        return redirect(url_for('login'))
 
-    if request.method == 'POST':
-        hours = int(request.form['hours'])
-        sessions = int(request.form['sessions'])
-        tracker_data['total_hours'] += hours
-        tracker_data['sessions'] += sessions
-        return redirect(url_for('study_tracker'))
-    return render_template('tracker.html', tracker_data=tracker_data)
 
 @app.route('/compiler', methods=['GET', 'POST'])
 def compiler():
@@ -390,6 +549,74 @@ def signup():
 
     return render_template('signup.html')
 
+
+logging.basicConfig(level=logging.DEBUG)
+
+@app.route('/fun_zone')
+def fun_zone():
+    return render_template('quiz.html')
+
+@app.route('/get_questions')
+def get_questions():
+    questions = [
+        {
+            'question': 'What is the capital of France?',
+            'choices': ['Paris', 'London', 'Rome', 'Berlin'],
+            'correctAnswer': 'Paris'
+        },
+        {
+            'question': 'Who wrote "To Kill a Mockingbird"?',
+            'choices': ['Harper Lee', 'J.K. Rowling', 'Ernest Hemingway', 'Mark Twain'],
+            'correctAnswer': 'Harper Lee'
+        },
+        {
+            'question': 'What is the smallest prime number?',
+            'choices': ['0', '1', '2', '3'],
+            'correctAnswer': '2'
+        },
+        # Add more questions as needed
+    ]
+    random.shuffle(questions)
+    return jsonify({'questions': questions})
+
+@app.route('/get_stories')
+def get_stories():
+    stories = [
+        {'title': 'The Tortoise and the Hare', 'content': 'Once upon a time, a hare mocked a slow-moving tortoise...'},
+        {'title': 'The Boy Who Cried Wolf', 'content': 'A shepherd boy who watched a flock of sheep near a village...'},
+        # Add more stories as needed
+    ]
+    return jsonify({'stories': stories})
+
+
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+
+@app.route('/search_youtube')
+def search_youtube():
+    query = request.args.get('query')
+    if not query:
+        return jsonify({'error': 'Query parameter is required'}), 400
+
+    try:
+        youtube_request = youtube.search().list(
+            part='snippet',
+            q=query,
+            maxResults=5,
+            type='video'
+        )
+        response = youtube_request.execute()
+        videos = []
+        for item in response['items']:
+            video_id = item['id']['videoId']
+            embed_url = f'https://www.youtube.com/embed/{video_id}'
+            videos.append({'title': item['snippet']['title'], 'embed_url': embed_url})
+
+        logging.debug(f'YouTube Search Results: {videos}')
+        return jsonify({'videos': videos})
+    except Exception as e:
+        logging.error(f'Error during YouTube search: {str(e)}')
+        return jsonify({'error': 'Failed to fetch YouTube videos'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0',port=8000)
