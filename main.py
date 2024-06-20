@@ -17,7 +17,7 @@ import threading
 import requests
 import logging
 import cv2
-import spacy
+
 import numpy as np
 
 
@@ -57,10 +57,7 @@ def save_users(users_data):
     with open('users.json', 'w') as file:
         json.dump(users_data, file, indent=4)
 
-notes = []
 
-# Load spaCy English model for NER
-nlp = spacy.load('en_core_web_sm')
 
 # Route to render the HTML page
 @app.route('/')
@@ -68,26 +65,7 @@ def index():
     return render_template('home.html', notes=notes)
 
 # Route to handle adding a new note
-@app.route('/add_note', methods=['POST'])
-def add_note():
-    title = request.form['title']
-    content = request.form['content']
-    color = request.form['color']
-    tags = request.form.getlist('tags[]')
 
-    # Perform NER on content
-    entities = perform_ner(content)
-
-    note = {
-        'id': len(notes) + 1,
-        'title': title,
-        'content': content,
-        'color': color,
-        'tags': tags,
-        'entities': entities
-    }
-    notes.append(note)
-    return jsonify({'success': True})
 
 # Route to delete a note
 @app.route('/delete_note/<int:id>', methods=['DELETE'])
@@ -97,18 +75,10 @@ def delete_note(id):
     return jsonify({'success': True})
 
 # Route to perform NER
-@app.route('/perform_ner', methods=['POST'])
-def perform_ner():
-    data = request.get_json()
-    content = data['content']
-    entities = extract_entities(content)
-    return jsonify({'entities': entities})
+
 
 # Function to extract entities using spaCy NER
-def extract_entities(text):
-    doc = nlp(text)
-    entities = [ent.text for ent in doc.ents]
-    return entities
+
 @app.route('/upload_profile_picture', methods=['POST'])
 def upload_profile_picture():
     if 'username' not in session:
