@@ -8,11 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/python/python.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/mode/clike/clike.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/closebrackets.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/addon/edit/matchbrackets.min.js" defer></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -29,12 +29,12 @@
             align-items: flex-start;
             max-width: 1200px;
             margin: 20px auto;
+            gap: 20px;
         }
 
         .editor-container,
         .output-container {
-            width: 45%;
-            margin: 10px;
+            flex: 1 1 45%;
             padding: 20px;
             background-color: #fff;
             border-radius: 8px;
@@ -60,7 +60,6 @@
 
         select,
         textarea,
-        input[type="submit"],
         button {
             width: 100%;
             padding: 10px;
@@ -123,6 +122,18 @@
         .form-group {
             margin-bottom: 15px;
         }
+
+        @media (max-width: 768px) {
+            .editor-container,
+            .output-container {
+                flex: 1 1 100%;
+            }
+
+            iframe {
+                width: 100%;
+                height: auto;
+            }
+        }
     </style>
 </head>
 
@@ -157,7 +168,6 @@
     </div>
 
     <div class="container video-container animate__animated animate__fadeIn">
-        </div>
     </div>
 
     <script>
@@ -224,13 +234,14 @@
 
             function fetchVideos(code) {
                 const query = "programming tutorial " + code;
-                const apiKey = "AIzaSyA95wDCTBxnMufuCbNS5e0sZyGbsdWjZC0"; // Replace with your YouTube API key
+                // Replace with your YouTube API key securely in your backend code
+                const apiKey = "AIzaSyA95wDCTBxnMufuCbNS5e0sZyGbsdWjZC0";
                 const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&key=${apiKey}`;
 
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
-                        const videoContainer = document.getElementById('videoContainer');
+                        const videoContainer = document.querySelector('.video-container');
                         videoContainer.innerHTML = '';
                         const videos = data.items;
                         videos.forEach(video => {
