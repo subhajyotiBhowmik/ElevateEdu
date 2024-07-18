@@ -9,6 +9,7 @@ import string
 import subprocess
 import io
 import sys
+import uuid
 from datetime import datetime
 import cv2
 import numpy as np
@@ -17,9 +18,9 @@ import threading
 import requests
 import logging
 import cv2
-
+from functools import wraps
 import numpy as np
-
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 
 
@@ -35,7 +36,8 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'subhajyoti010102@gmail.com'  # Enter your Gmail address
 app.config['MAIL_PASSWORD'] = 'vkps mwjm dnat voyd'   # Enter your Gmail password
-app.config['MAIL_DEFAULT_SENDER'] = 'subhajyoti010102@gmail.com'  # Enter your Gmail address
+app.config['MAIL_DEFAULT_SENDER'] = 'subhajyoti010102@gmail.com'
+socketio = SocketIO(app)# Enter your Gmail address
 
 UPLOAD_FOLDER = 'uploads/'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -58,11 +60,133 @@ def save_users(users_data):
         json.dump(users_data, file, indent=4)
 
 
+
+
+
+def send_from_directory(param, filename):
+    pass
+
+@app.route('/courses', methods=['GET', 'POST'])
+def courses():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    courses_data = load_courses()
+
+    if request.method == 'POST':
+        course_name = request.form['course_name']
+        description = request.form['description']
+        instructor = request.form['instructor']
+        new_course = {
+            'course_name': course_name,
+            'description': description,
+            'instructor': instructor,
+            'students': []
+        }
+        courses_data.append(new_course)
+        save_courses(courses_data)
+        return redirect(url_for('courses'))
+
+    return render_template('courses.html', courses=courses_data)
+
+def load_courses():
+    if os.path.exists('courses.json'):
+        with open('courses.json', 'r') as file:
+            return json.load(file)
+    return []
+
+def save_courses(courses_data):
+    with open('courses.json', 'w') as file:
+        json.dump(courses_data, file, indent=4)
+
+@app.route('/enroll', methods=['POST'])
+def enroll():
+    if 'username' not in session:
+        return jsonify({'status': 'error', 'message': 'User not logged in'})
+
+    course_name = request.json['course_name']
+    courses_data = load_courses()
+
+    for course in courses_data:
+        if course['course_name'] == course_name:
+            course['students'].append(session['username'])
+            break
+
+    save_courses(courses_data)
+    return jsonify({'status': 'success'})
+
+@app.route('/my_courses')
+def my_courses():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    courses_data = load_courses()
+    user_courses = [course for course in courses_data if session['username'] in course['students']]
+    return render_template('my_courses.html', courses=user_courses)
+
+
+
+
+
+
+
+# Existing code here...
+
+# Collaborative Study Sessions
+rooms = {}
+
+@app.route('/collaborative_study')
+def collaborative_study():
+    username = request.args.get('username', f'User-{uuid.uuid4()}')
+    return render_template('collaborative_study.html', username=username)
+
+@socketio.on('join')
+def on_join(data):
+    username = data['username']
+    room = data['room']
+    join_room(room)
+    if room not in rooms:
+        rooms[room] = []
+    rooms[room].append(username)
+    emit('message', {'msg': f'{username} has joined the room.'}, room=room)
+    emit('user-list', {'users': rooms[room]}, room=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = data['username']
+    room = data['room']
+    leave_room(room)
+    if room in rooms and username in rooms[room]:
+        rooms[room].remove(username);
+        emit('message', {'msg': f'{username} has left the room.'}, room=room)
+        emit('user-list', {'users': rooms[room]}, room=room)
+
+@socketio.on('message')
+def handle_message(data):
+    emit('message', data, room=data['room'])
+
+@socketio.on('screen-share')
+def handle_screen_share(data):
+    emit('screen-share', data, room=data['room'])
+
+@socketio.on('signal')
+def on_signal(data):
+    emit('signal', data, room=data['room'])
+
+
+@app.route('/profile')
+def profile():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    users_data = load_users()
+    user = users_data.get(session['username'])
+    return render_template('profile.html', user=user)
+
+
 @app.route('/upload_profile_picture', methods=['POST'])
 def upload_profile_picture():
     if 'username' not in session:
         return jsonify({'status': 'error', 'message': 'User not logged in'})
-
     if 'profile_picture' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'})
 
@@ -74,17 +198,13 @@ def upload_profile_picture():
         users_data[session['username']]['profile_picture'] = filename
         save_users(users_data)
         return jsonify({'status': 'success', 'new_picture_url': url_for('uploaded_file', filename=filename)})
-    else:
-        return jsonify({'status': 'error', 'message': 'Invalid file format'})
-
-
-def send_from_directory(param, filename):
-    pass
+    return jsonify({'status': 'error', 'message': 'Invalid file format'})
 
 
 @app.route('/uploaded_file/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
@@ -94,30 +214,14 @@ def update_profile():
     username = request.form['username']
     email = request.form['email']
     bio = request.form['bio']
-
     users_data = load_users()
     users_data[session['username']].update({'username': username, 'email': email, 'bio': bio})
     save_users(users_data)
-
     return jsonify({'status': 'success'})
 
-@app.route('/recent_activities', methods=['GET'])
-def recent_activities():
-    if 'username' not in session:
-        return jsonify({'status': 'error', 'message': 'User not logged in'})
 
-    # Example activities, replace with actual data fetching from the database
-    activities = ['Logged in', 'Updated profile', 'Watched a video']
-    return jsonify({'status': 'success', 'activities': activities})
 
-@app.route('/profile')
-def profile():
-    if 'username' not in session:
-        return redirect(url_for('login'))
 
-    users_data = load_users()
-    user = users_data.get(session['username'])
-    return render_template('profile.html', user=user)
 
 mail = Mail(app)
 
@@ -245,6 +349,59 @@ def compiler():
             result = {"error": f"An error occurred: {str(e)}"}
         return jsonify(result)
 
+user_data = {
+    'user_id': 1,
+    'progress': {
+        'python': 5,
+        'javascript': 3,
+        'machine learning': 2,
+        # ... more topics
+    },
+    'preferences': ['python', 'machine learning']
+}
+
+# Simulated recommendations (in a real application, this would be generated by an AI model)
+recommendations = [
+    'Advanced Python Tutorial',
+    'Deep Learning with TensorFlow',
+    'JavaScript ES6 Features',
+    'Data Structures and Algorithms in Python',
+    # ... more recommendations
+]
+
+@app.route('/recommendations', methods=['GET'])
+def get_recommendations():
+    user_id = request.args.get('user_id')
+    # In a real application, analyze user_data and generate recommendations
+    personalized_recommendations = random.sample(recommendations, 3)
+    return jsonify({'recommendations': personalized_recommendations})
+
+
+UPLOAD_FOLDER = 'shared_notes'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+@app.route('/save_notes', methods=['POST'])
+def save_notes():
+    data = request.json
+    video_id = data['video_id']
+    notes = data['notes']
+    filename = f"{video_id}.txt"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+    with open(filepath, 'w') as file:
+        file.write(notes)
+
+    public_url = f"/shared_notes/{filename}"
+    return jsonify({"url": public_url})
+
+
+@app.route('/shared_notes/<filename>')
+def shared_notes(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 def compile_python(code):
     try:
         old_stdout = sys.stdout
@@ -304,6 +461,23 @@ def settings():
         return redirect(url_for('login'))
 
     return render_template('settings.html')
+
+def is_admin(user):
+    return user.get('role') == 'admin'
+
+
+def get_current_user():
+    pass
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()  # Function to get the currently logged-in user
+        if not is_admin(user):
+            return jsonify({'status': 'error', 'message': 'Admins only!'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/live_class')
 def live_class():
@@ -393,6 +567,70 @@ def login():
 def generate_otp():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
+
+DISCUSSION_FILE = 'discussion.json'
+
+if not os.path.exists(DISCUSSION_FILE):
+    with open(DISCUSSION_FILE, 'w') as file:
+        json.dump({'messages': []}, file)
+
+def get_discussion_data():
+    with open(DISCUSSION_FILE, 'r') as file:
+        return json.load(file)
+
+def save_discussion_data(data):
+    with open(DISCUSSION_FILE, 'w') as file:
+        json.dump(data, file)
+
+@app.route('/discussion')
+def discussion():
+    return render_template('discussion.html')
+
+@app.route('/get_discussion_messages', methods=['GET'])
+def get_discussion_messages():
+    data = get_discussion_data()
+    return jsonify(data)
+
+@app.route('/post_discussion_message', methods=['POST'])
+def post_discussion_message():
+    content = request.json.get('content')
+    user = session.get('username', 'Anonymous')
+    data = get_discussion_data()
+    new_message = {'id': len(data['messages']) + 1, 'user': user, 'content': content, 'replies': []}
+    data['messages'].append(new_message)
+    save_discussion_data(data)
+    return jsonify({'status': 'success'})
+
+@app.route('/edit_discussion_message/<int:message_id>', methods=['PUT'])
+def edit_discussion_message(message_id):
+    content = request.json.get('content')
+    data = get_discussion_data()
+    for message in data['messages']:
+        if message['id'] == message_id:
+            message['content'] = content
+            save_discussion_data(data)
+            return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'Message not found'}), 404
+
+@app.route('/delete_discussion_message/<int:message_id>', methods=['DELETE'])
+def delete_discussion_message(message_id):
+    data = get_discussion_data()
+    data['messages'] = [message for message in data['messages'] if message['id'] != message_id]
+    save_discussion_data(data)
+    return jsonify({'status': 'success'})
+
+@app.route('/reply_discussion_message/<int:message_id>', methods=['POST'])
+def reply_discussion_message(message_id):
+    content = request.json.get('content')
+    user = session.get('username', 'Anonymous')
+    data = get_discussion_data()
+    for message in data['messages']:
+        if message['id'] == message_id:
+            new_reply = {'id': len(message['replies']) + 1, 'user': user, 'content': content}
+            message['replies'].append(new_reply)
+            save_discussion_data(data)
+            return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'Message not found'}), 404
 # Route for Forgot Password
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
@@ -418,6 +656,12 @@ def verify_otp():
         else:
             return render_template('verify_otp.html', message="Invalid OTP. Please try again.")
     return render_template('verify_otp.html')
+
+@app.route('/whatsapp')
+def whatsapp():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('whatsapp.html')
 
 def age_estimator():
     # Capture Image from Webcam
@@ -449,6 +693,9 @@ def age_estimator():
     cap.release()
     cv2.destroyAllWindows()
     return age
+
+
+
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
@@ -497,6 +744,9 @@ def signup():
 
 
     return render_template('signup.html')
+
+
+
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -566,6 +816,8 @@ def search_youtube():
     except Exception as e:
         logging.error(f'Error during YouTube search: {str(e)}')
         return jsonify({'error': 'Failed to fetch YouTube videos'}), 500
+        return jsonify({'error': 'Failed to fetch YouTube videos'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0',port=8000)
+    socketio.run(app, debug=True)
